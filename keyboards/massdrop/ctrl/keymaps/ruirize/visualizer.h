@@ -10,6 +10,7 @@ typedef struct Point {
 #define VISUALIZER_LED_RANGE_X 224.0
 #define VISUALIZER_LED_RANGE_Y 64.0
 
+#define VISUALIZER_YEET_VELOCITY 80
 #define VISUALIZER_FREQ_LENGTH 32
 #define VISUALIZER_FREQ_BYTE_RANGE_DIVISOR 8
 
@@ -21,7 +22,7 @@ static HSV visualizer_foreground;
 static float visualizer_freq[VISUALIZER_FREQ_LENGTH] = { 0 };
 
 static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
-    const uint8_t segment_length = 256/4;
+    const uint8_t segment_length = 256/2;
 
     Point led_position = {
         g_led_config.point[i].x / VISUALIZER_LED_RANGE_X * 255.0,
@@ -30,19 +31,12 @@ static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
 
     uint16_t global_pos = visualizer_scroll_pos + led_position.x;
     uint8_t segment_pos = global_pos % segment_length;
-    bool is_odd = (global_pos / segment_length) % 2 != 0;
 
-    // Assign visualiser colors
-    hsv.h = is_odd ? visualizer_foreground.h + 128 : visualizer_foreground.h;
-    hsv.s = visualizer_foreground.s;
-    hsv.v = visualizer_foreground.v;
+    // Assign visualiser color
+    hsv = visualizer_foreground;
 
     // Slight x/y hue drift over the whole keyboard
     hsv.h += (led_position.y / 5 + led_position.x / 5) / 2;
-
-    // Make segments segmented
-    if (segment_pos < segment_length * 0.4)
-        hsv = (HSV){ 0, 0, 0 };
 
     // Underglow is "background"
     if (HAS_ANY_FLAGS(g_led_config.flags[i], LED_FLAG_UNDERGLOW))
@@ -50,6 +44,12 @@ static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
 
     // Use frequency intensity to set value
     hsv.v = visualizer_freq[led_position.x / VISUALIZER_FREQ_BYTE_RANGE_DIVISOR] * 255;
+
+    float yeetal_proportion = MAX(0.0, MIN(1.0, (abs8(visualizer_velocity) - VISUALIZER_YEET_VELOCITY) / (float)VISUALIZER_YEET_VELOCITY));
+
+    // Make segments segmented
+    if (!led_is_underglow && segment_pos < (float)segment_length * 0.5 * yeetal_proportion)
+        hsv.h = visualizer_foreground.h + 128;
 
     return hsv;
 }
