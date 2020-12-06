@@ -2,13 +2,15 @@ RGB_MATRIX_EFFECT(VISUALIZER)
 
 #ifdef RGB_MATRIX_CUSTOM_EFFECT_IMPLS
 
+#define VISUALIZER_FREQ_LENGTH 32
+#define VISUALIZER_FREQ_BYTE_RANGE_DIVISOR 8
+
 static uint8_t visualizer_scroll_pos;
+static int8_t visualizer_velocity;
 static HSV visualizer_background;
 static HSV visualizer_foreground;
 
-#define VISUALIZER_LENGTH 32
-#define VISUALIZER_BYTE_DIVISOR 8
-static float visualizer_freq[VISUALIZER_LENGTH] = { 0 };
+static float visualizer_freq[VISUALIZER_FREQ_LENGTH] = { 0 };
 
 static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
     const uint8_t segment_length = 256/4;
@@ -33,8 +35,8 @@ static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
     if (HAS_ANY_FLAGS(g_led_config.flags[i], LED_FLAG_UNDERGLOW))
         hsv = visualizer_background;
 
-    // Use frequency intensity to modify value
-    hsv.v *= visualizer_freq[g_led_config.point[i].x / VISUALIZER_BYTE_DIVISOR];
+    // Use frequency intensity to set value
+    hsv.v = visualizer_freq[g_led_config.point[i].x / VISUALIZER_FREQ_BYTE_RANGE_DIVISOR] * 255;
 
     return hsv;
 }
@@ -46,15 +48,16 @@ static bool VISUALIZER(effect_params_t* params) { return effect_runner_i(params,
 
 void raw_hid_receive(uint8_t *data, uint8_t length) {
     visualizer_scroll_pos = data[0];
-    visualizer_background.h = data[1];
-    visualizer_background.s = data[2];
-    visualizer_background.v = data[3];
-    visualizer_foreground.h = data[4];
-    visualizer_foreground.s = data[5];
-    visualizer_foreground.v = data[6];
+    visualizer_velocity = data[1] - 128;
+    visualizer_background.h = data[2];
+    visualizer_background.s = data[3];
+    visualizer_background.v = data[4];
+    visualizer_foreground.h = data[5];
+    visualizer_foreground.s = data[6];
+    visualizer_foreground.v = data[7];
 
-    uint8_t freq_start = 7;
-    for (uint8_t i = 0; i < VISUALIZER_LENGTH; i++) {
+    uint8_t freq_start = 8;
+    for (uint8_t i = 0; i < VISUALIZER_FREQ_LENGTH; i++) {
         visualizer_freq[i] = data[freq_start + i] / 255.0f;
     }
 }
