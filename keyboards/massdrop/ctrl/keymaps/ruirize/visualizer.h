@@ -7,10 +7,18 @@ typedef struct Point {
     uint8_t y;
 } Point;
 
+#ifndef MAX
+    #define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
+#endif
+#ifndef MIN
+    #define MIN(a,b) ((a) < (b)? (a): (b))
+#endif
+
 #define VISUALIZER_LED_RANGE_X 224.0
 #define VISUALIZER_LED_RANGE_Y 64.0
 
 #define VISUALIZER_YEET_VELOCITY 80
+#define VISUALIZER_SCROLL_UNDERGLOW_MULTIPLIER 1.75
 #define VISUALIZER_FREQ_LENGTH 32
 #define VISUALIZER_FREQ_BYTE_RANGE_DIVISOR 8
 
@@ -29,6 +37,9 @@ static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
         g_led_config.point[i].y / VISUALIZER_LED_RANGE_Y * 255.0
     };
 
+    bool led_is_underglow = HAS_ANY_FLAGS(g_led_config.flags[i], LED_FLAG_UNDERGLOW);
+
+    uint8_t underglow_pos = (int)((visualizer_scroll_pos * VISUALIZER_SCROLL_UNDERGLOW_MULTIPLIER) + led_position.x) % 255;
     uint16_t global_pos = visualizer_scroll_pos + led_position.x;
     uint8_t segment_pos = global_pos % segment_length;
 
@@ -39,7 +50,7 @@ static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
     hsv.h += led_position.y / 8.0;
 
     // Underglow is "background"
-    if (HAS_ANY_FLAGS(g_led_config.flags[i], LED_FLAG_UNDERGLOW))
+    if (led_is_underglow)
         hsv = visualizer_background;
 
     // Use frequency intensity to set value
@@ -50,6 +61,13 @@ static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
     // Make segments segmented
     if (!led_is_underglow && segment_pos < (float)segment_length * 0.5 * yeetal_proportion)
         hsv.h = visualizer_foreground.h + 128;
+
+    // Make underglow less segmented
+    if (led_is_underglow && underglow_pos < 100 * yeetal_proportion) {
+        hsv.h = visualizer_foreground.h;
+        hsv.s = visualizer_foreground.s;
+        hsv.v = MIN(255, hsv.v * 2.0);
+    }
 
     return hsv;
 }
