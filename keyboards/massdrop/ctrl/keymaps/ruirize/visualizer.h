@@ -2,6 +2,14 @@ RGB_MATRIX_EFFECT(VISUALIZER)
 
 #ifdef RGB_MATRIX_CUSTOM_EFFECT_IMPLS
 
+typedef struct Point {
+    uint8_t x;
+    uint8_t y;
+} Point;
+
+#define VISUALIZER_LED_RANGE_X 224.0
+#define VISUALIZER_LED_RANGE_Y 64.0
+
 #define VISUALIZER_FREQ_LENGTH 32
 #define VISUALIZER_FREQ_BYTE_RANGE_DIVISOR 8
 
@@ -15,7 +23,12 @@ static float visualizer_freq[VISUALIZER_FREQ_LENGTH] = { 0 };
 static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
     const uint8_t segment_length = 256/4;
 
-    uint16_t global_pos = visualizer_scroll_pos + g_led_config.point[i].x;
+    Point led_position = {
+        g_led_config.point[i].x / VISUALIZER_LED_RANGE_X * 255.0,
+        g_led_config.point[i].y / VISUALIZER_LED_RANGE_Y * 255.0
+    };
+
+    uint16_t global_pos = visualizer_scroll_pos + led_position.x;
     uint8_t segment_pos = global_pos % segment_length;
     bool is_odd = (global_pos / segment_length) % 2 != 0;
 
@@ -25,7 +38,7 @@ static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
     hsv.v = visualizer_foreground.v;
 
     // Slight x/y hue drift over the whole keyboard
-    hsv.h += (g_led_config.point[i].y / 5 + g_led_config.point[i].x / 5) / 2;
+    hsv.h += (led_position.y / 5 + led_position.x / 5) / 2;
 
     // Make segments segmented
     if (segment_pos < segment_length * 0.4)
@@ -36,7 +49,7 @@ static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
         hsv = visualizer_background;
 
     // Use frequency intensity to set value
-    hsv.v = visualizer_freq[g_led_config.point[i].x / VISUALIZER_FREQ_BYTE_RANGE_DIVISOR] * 255;
+    hsv.v = visualizer_freq[led_position.x / VISUALIZER_FREQ_BYTE_RANGE_DIVISOR] * 255;
 
     return hsv;
 }
