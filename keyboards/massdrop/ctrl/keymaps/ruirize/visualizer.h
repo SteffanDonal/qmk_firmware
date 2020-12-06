@@ -35,8 +35,8 @@ static HSV VISUALIZER_MATH(HSV hsv, uint8_t i, uint8_t time) {
     // Assign visualiser color
     hsv = visualizer_foreground;
 
-    // Slight x/y hue drift over the whole keyboard
-    hsv.h += (led_position.y / 5 + led_position.x / 5) / 2;
+    // Slight y hue drift over the whole keyboard
+    hsv.h += led_position.y / 8.0;
 
     // Underglow is "background"
     if (HAS_ANY_FLAGS(g_led_config.flags[i], LED_FLAG_UNDERGLOW))
